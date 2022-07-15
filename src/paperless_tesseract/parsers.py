@@ -1,12 +1,15 @@
 import json
 import os
 import re
+import subprocess
 
 from django.conf import settings
 from documents.parsers import DocumentParser
 from documents.parsers import make_thumbnail_from_pdf
 from documents.parsers import ParseError
 from PIL import Image
+from pyheif_pillow_opener import register_heif_opener
+register_heif_opener()
 
 Image.MAX_IMAGE_PIXELS = settings.OCR_MAX_IMAGE_PIXELS
 
@@ -68,6 +71,7 @@ class RasterisedDocumentParser(DocumentParser):
             "image/tiff",
             "image/bmp",
             "image/gif",
+            "image/heic",
         ]
 
     def has_alpha(self, image):
@@ -231,17 +235,53 @@ class RasterisedDocumentParser(DocumentParser):
         # This forces tesseract to use one core per page.
         os.environ["OMP_THREAD_LIMIT"] = "1"
 
-        if mime_type == "application/pdf":
-            text_original = self.extract_text(None, document_path)
-            original_has_text = text_original and len(text_original) > 50
-        else:
-            text_original = None
-            original_has_text = False
+        if mime_type == "image/heic":
+            self.log(
+                 "info",
+                 f"Converting {document_path} to jpeg "
+                 "for compatibility",
+            )
+
+            environment = os.environ.copy()
+            if settings.CONVERT_MEMORY_LIMIT:
+                environment["MAGICK_MEMORY_LIMIT"] = settings.CONVERT_MEMORY_LIMIT
+            if settings.CONVERT_TMPDIR:
+                environment["MAGICK_TMPDIR"] = settings.CONVERT_TMPDIR
+
+            #     heic_image = Image.open(document_path)
+            #     heic_image.save(document_path, format="jpeg")
+
+            args = [settings.CONVERT_BINARY]
+            args += ["-format", "jpeg"]
+            args += [document_path, document_path]
+
+            self.log("debug", f"Execute convert: " + " ".join(args))
+
+            if not subprocess.Popen(args, env=environment).wait() == 0:
+                raise ParseError(f"Convert failed at {args}")
+
+            args = [settings.CONVERT_BINARY]
+            args += ["-density", "300"]
+            args += ["-auto-orient"]
+            args += ["-deskew", "40"]
+            args += ["-set", "option:deskew:auto-crop", "true"]
+            args += ["-format", "jpeg"]
+            args += [document_path, document_path]
+
+            self.log("debug", f"Execute cleanup: " + " ".join(args))
+
+            if not subprocess.Popen(args, env=environment).wait() == 0:
+                raise ParseError(f"Convert failed at {args}")
+
+
+
 
         if settings.OCR_MODE == "skip_noarchive" and original_has_text:
             self.log("debug", "Document has text, skipping OCRmyPDF entirely.")
             self.text = text_original
             return
+
+
 
         import ocrmypdf
         from ocrmypdf import InputFileError, EncryptedPdfError

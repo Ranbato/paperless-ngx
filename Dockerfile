@@ -99,7 +99,9 @@ ARG RUNTIME_PACKAGES="\
   zlib1g \
   # Barcode splitter
   libzbar0 \
-  poppler-utils"
+  poppler-utils \
+  # HEIC support
+  libheif-dev "
 
 # Install basic runtime packages.
 # These change very infrequently
@@ -146,8 +148,10 @@ RUN --mount=type=bind,readwrite,source=docker,target=./ \
 RUN --mount=type=bind,from=qpdf-builder,target=/qpdf \
     --mount=type=bind,from=psycopg2-builder,target=/psycopg2 \
     --mount=type=bind,from=pikepdf-builder,target=/pikepdf \
-  set -eux \
-  && echo "Installing qpdf" \
+    set -eux \
+    && echo "======Checking psycopg2" \
+    && ls -al /psycopg2/usr/src/wheels/ \
+    && echo "Installing qpdf" \
     && apt-get install --yes --no-install-recommends /qpdf/usr/src/qpdf/libqpdf28_*.deb \
     && apt-get install --yes --no-install-recommends /qpdf/usr/src/qpdf/qpdf_*.deb \
   && echo "Installing pikepdf and dependencies" \
@@ -158,7 +162,7 @@ RUN --mount=type=bind,from=qpdf-builder,target=/qpdf \
     && python3 -m pip install --no-cache-dir /pikepdf/usr/src/pikepdf/wheels/pikepdf*.whl \
     && python -m pip list \
   && echo "Installing psycopg2" \
-    && python3 -m pip install --no-cache-dir /psycopg2/usr/src/psycopg2/wheels/psycopg2*.whl \
+    && python3 -m pip install --no-cache-dir /psycopg2/usr/src/wheels/psycopg2*.whl \
     && python -m pip list
 
 # Python dependencies
