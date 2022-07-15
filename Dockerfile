@@ -149,8 +149,6 @@ RUN --mount=type=bind,from=qpdf-builder,target=/qpdf \
     --mount=type=bind,from=psycopg2-builder,target=/psycopg2 \
     --mount=type=bind,from=pikepdf-builder,target=/pikepdf \
     set -eux \
-    && echo "======Checking psycopg2" \
-    && ls -al /psycopg2/usr/src/wheels/ \
     && echo "Installing qpdf" \
     && apt-get install --yes --no-install-recommends /qpdf/usr/src/qpdf/libqpdf28_*.deb \
     && apt-get install --yes --no-install-recommends /qpdf/usr/src/qpdf/qpdf_*.deb \
@@ -162,7 +160,7 @@ RUN --mount=type=bind,from=qpdf-builder,target=/qpdf \
     && python3 -m pip install --no-cache-dir /pikepdf/usr/src/pikepdf/wheels/pikepdf*.whl \
     && python -m pip list \
   && echo "Installing psycopg2" \
-    && python3 -m pip install --no-cache-dir /psycopg2/usr/src/wheels/psycopg2*.whl \
+    && python3 -m pip install --no-cache-dir /psycopg2/usr/src/psycopg2/psycopg2*.whl \
     && python -m pip list
 
 # Python dependencies

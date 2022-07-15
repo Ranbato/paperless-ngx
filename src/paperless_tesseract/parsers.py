@@ -8,8 +8,8 @@ from documents.parsers import DocumentParser
 from documents.parsers import make_thumbnail_from_pdf
 from documents.parsers import ParseError
 from PIL import Image
-from pyheif_pillow_opener import register_heif_opener
-register_heif_opener()
+# from pyheif_pillow_opener import register_heif_opener
+# register_heif_opener()
 
 Image.MAX_IMAGE_PIXELS = settings.OCR_MAX_IMAGE_PIXELS
 
@@ -253,27 +253,13 @@ class RasterisedDocumentParser(DocumentParser):
 
             args = [settings.CONVERT_BINARY]
             args += ["-format", "jpeg"]
+            args += ["-density", "300"]
             args += [document_path, document_path]
 
             self.log("debug", f"Execute convert: " + " ".join(args))
 
             if not subprocess.Popen(args, env=environment).wait() == 0:
                 raise ParseError(f"Convert failed at {args}")
-
-            args = [settings.CONVERT_BINARY]
-            args += ["-density", "300"]
-            args += ["-auto-orient"]
-            args += ["-deskew", "40"]
-            args += ["-set", "option:deskew:auto-crop", "true"]
-            args += ["-format", "jpeg"]
-            args += [document_path, document_path]
-
-            self.log("debug", f"Execute cleanup: " + " ".join(args))
-
-            if not subprocess.Popen(args, env=environment).wait() == 0:
-                raise ParseError(f"Convert failed at {args}")
-
-
 
 
         if settings.OCR_MODE == "skip_noarchive" and original_has_text:
